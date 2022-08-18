@@ -83,5 +83,9 @@ module.exports = {
     noColor: {
         boolean: true,
         describe: "Disable color output"
+    },
+    onlyMatched: {
+        boolean: true,
+        describe: "Only print matched text"
     }
 };

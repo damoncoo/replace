@@ -4,7 +4,7 @@ var fs = require("fs"),
     minimatch = require("minimatch"),
     sharedOptions = require("./bin/shared-options");
 
-module.exports = function(options) {
+module.exports = function (options) {
     var matched = [];
     // If the path is the same as the default and the recursive option was not
     // specified, search recursively under the current directory as a
@@ -37,8 +37,7 @@ module.exports = function(options) {
     var regex;
     if (options.regex instanceof RegExp) {
         regex = options.regex;
-    }
-    else {
+    } else {
         regex = new RegExp(options.regex, flags);
     }
     var canReplace = !options.preview && options.replacement !== undefined;
@@ -60,23 +59,22 @@ module.exports = function(options) {
         eval('replaceFunc = ' + fs.readFileSync(options.funcFile, "utf-8"));
     }
 
-    if(options.z) {
-          process.stdin.resume();
-          _input = "";
-          process.stdin.on("data", function (input) {
+    if (options.z) {
+        process.stdin.resume();
+        _input = "";
+        process.stdin.on("data", function (input) {
             _input += input;
-          });
-          
-          process.stdin.on("end", function () {
-              const text = replacizeText(_input);
-              process.stdout.write(text);
-          });
+        });
+
+        process.stdin.on("end", function () {
+            const text = replacizeText(_input);
+            process.stdout.write(text);
+        });
     } else {
         for (var i = 0; i < options.paths.length; i++) {
             if (options.async) {
                 replacizeFile(options.paths[i]);
-            }
-            else {
+            } else {
                 replacizeFileSync(options.paths[i]);
             }
         }
@@ -85,86 +83,91 @@ module.exports = function(options) {
     return matched;
 
     function canSearch(file, isFile) {
-      var inIncludes = includes && includes.some(function(include) {
-          return minimatch(file, include, { matchBase: true });
-      })
-      var inExcludes = excludes.some(function(exclude) {
-          return minimatch(file, exclude, { matchBase: true });
-      })
+        var inIncludes = includes && includes.some(function (include) {
+            return minimatch(file, include, {
+                matchBase: true
+            });
+        })
+        var inExcludes = excludes.some(function (exclude) {
+            return minimatch(file, exclude, {
+                matchBase: true
+            });
+        })
 
-      return ((!includes || !isFile || inIncludes) && (!excludes || !inExcludes));
+        return ((!includes || !isFile || inIncludes) && (!excludes || !inExcludes));
     }
 
     function replacizeFile(file) {
-      fs.lstat(file, function(err, stats) {
-          if (err) throw err;
+        fs.lstat(file, function (err, stats) {
+            if (err) throw err;
 
-          if (stats.isSymbolicLink()) {
-              // don't follow symbolic links for now
-              return;
-          }
-          var isFile = stats.isFile();
-          if (!canSearch(file, isFile)) {
-              return;
-          }
-          if (isFile) {
-              fs.readFile(file, "utf-8", function(err, text) {
-                  if (err) {
-                      if (err.code == 'EMFILE') {
-                          console.log('Too many files, try running `replace` without --async');
-                          process.exit(1);
-                      }
-                      throw err;
-                  }
+            if (stats.isSymbolicLink()) {
+                // don't follow symbolic links for now
+                return;
+            }
+            var isFile = stats.isFile();
+            if (!canSearch(file, isFile)) {
+                return;
+            }
+            if (isFile) {
+                fs.readFile(file, "utf-8", function (err, text) {
+                    if (err) {
+                        if (err.code == 'EMFILE') {
+                            console.log('Too many files, try running `replace` without --async');
+                            process.exit(1);
+                        }
+                        throw err;
+                    }
 
-                  text = replacizeText(text, file);
-                  if (canReplace && text !== null) {
-                      fs.writeFile(file, text, function(err) {
-                          if (err) throw err;
-                      });
-                  }
-              });
-          }
-          else if (stats.isDirectory() && options.recursive) {
-              fs.readdir(file, function(err, files) {
-                  if (err) throw err;
-                  for (var i = 0; i < files.length; i++) {
-                      replacizeFile(path.join(file, files[i]));
-                  }
-              });
-          }
-       });
+                    text = replacizeText(text, file);
+                    if (canReplace && text !== null) {
+                        fs.writeFile(file, text, function (err) {
+                            if (err) throw err;
+                        });
+                    }
+                });
+            } else if (stats.isDirectory() && options.recursive) {
+                fs.readdir(file, function (err, files) {
+                    if (err) throw err;
+                    for (var i = 0; i < files.length; i++) {
+                        replacizeFile(path.join(file, files[i]));
+                    }
+                });
+            }
+        });
     }
 
     function replacizeFileSync(file) {
-      var stats = fs.lstatSync(file);
-      if (stats.isSymbolicLink()) {
-          // don't follow symbolic links for now
-          return;
-      }
-      var isFile = stats.isFile();
-      if (!canSearch(file, isFile)) {
-          return;
-      }
-      if (isFile) {
-          var text = fs.readFileSync(file, "utf-8");
+        var stats = fs.lstatSync(file);
+        if (stats.isSymbolicLink()) {
+            // don't follow symbolic links for now
+            return;
+        }
+        var isFile = stats.isFile();
+        if (!canSearch(file, isFile)) {
+            return;
+        }
+        if (isFile) {
+            var text = fs.readFileSync(file, "utf-8");
 
-          var replacizedText = replacizeText(text, file);
+            var replacizedText = replacizeText(text, file);
 
-          if (replacizedText !== null) {
-              if (canReplace) {
-                  fs.writeFileSync(file, replacizedText);
-              } else {
-                  matched.push({ text, path: file });
-              }
-          }
-      }
-      else if (stats.isDirectory() && options.recursive) {
-          var files = fs.readdirSync(file);
-          for (var i = 0; i < files.length; i++) {
-              replacizeFileSync(path.join(file, files[i]));
-          }
-      }
+            if (replacizedText !== null) {
+                if (canReplace) {
+                    fs.writeFileSync(file, replacizedText);
+                } else {
+                    matched.push({
+                        text,
+                        path: file
+                    });
+                }
+            }
+        } else if (stats.isDirectory() && options.recursive) {
+            var files = fs.readdirSync(file);
+            for (var i = 0; i < files.length; i++) {
+                replacizeFileSync(path.join(file, files[i]));
+            }
+        }
     }
 
     function replacizeText(text, file) {
@@ -182,9 +185,9 @@ module.exports = function(options) {
             }
             console.log(printout);
         }
-        if (!options.silent && !options.quiet
-           && !(lineCount > options.maxLines)
-           && options.multiline) {
+        if (!options.silent && !options.quiet &&
+            !(lineCount > options.maxLines) &&
+            options.multiline) {
             var lines = text.split("\n");
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
@@ -194,11 +197,18 @@ module.exports = function(options) {
                     }
                     var replacement = options.replacement || "$&";
                     if (!options.noColor) {
-                      replacement = chalk[options.color](replacement);
+                        replacement = chalk[options.color](replacement);
                     }
                     line = line.replace(regex, replaceFunc || replacement);
-                    // only console log if file not stdin
-                    file && console.log(" " + (i + 1) + ": " + line.slice(0, limit));
+
+                    if (options.onlyMatched) {
+                        match.forEach((item) => {
+                            console.log(item)
+                        })
+                    } else {
+                        // only console log if file not stdin
+                        file && console.log(" " + (i + 1) + ": " + line.slice(0, limit));
+                    }
                 }
             }
         }
